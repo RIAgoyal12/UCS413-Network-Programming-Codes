@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+int main() {
+    int sockfd;
+    char buffer[1024];
+    struct sockaddr_in servaddr, cliaddr;
+    socklen_t len;
+
+    // Creating socket file descriptor
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Filling server information
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    servaddr.sin_family = AF_INET; // IPv4
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(12345);
+
+    // Bind the socket with the server address
+    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("Bind failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Server loop to handle incoming messages
+    while (1) {
+        len = sizeof(cliaddr);  // Length of client address
+        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&cliaddr, &len);
+        if (n < 0) {
+            perror("Receive failed");
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+        
+        buffer[n] = '\0';  // Null-terminate the received message
+        printf("Client : %s\n", buffer);
+        
+        // Send the same message back to the client (echo)
+        sendto(sockfd, buffer, n, 0, (struct sockaddr *)&cliaddr, len);
+    }
+
+    close(sockfd);
+    return 0;
+}
